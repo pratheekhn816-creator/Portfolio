@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 650" role="img" aria-labelledby="title desc">
+  <title id="title">Profile photo placeholder</title>
+  <desc id="desc">A permanent portrait placeholder for the portfolio profile image.</desc>
+  <defs><linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#26333a"/><stop offset="1" stop-color="#080d12"/></linearGradient></defs>
+  <rect width="520" height="650" fill="url(#bg)"/>
+  <circle cx="260" cy="220" r="105" fill="#d4a27f"/>
+  <path d="M155 215c9-116 198-149 216 7-30-30-63-40-99-39-42 1-78 14-117 32z" fill="#171c25"/>
+  <path d="M119 650c8-162 66-240 141-240s134 78 141 240z" fill="#1e2631"/>
+  <path d="M174 410 260 535l86-125 41 240H133z" fill="#f5f4f6"/>
+  <path d="M213 407h94l-47 89z" fill="#dce4ef"/>
+</svg>
