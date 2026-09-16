@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowDown, ArrowLeft, ArrowRight, ChevronDown, Code2, Copy, Download, Globe, Mail, MessageCircle, Phone, Settings, UserRound, Video, X } from "lucide-react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { projects } from "@/data/projects";
 import { experience } from "@/data/experience";
 import { ContactForm } from "@/components/ContactForm";
@@ -18,6 +18,28 @@ const expertise = [
   ["04", "Cloud, Security & Reliability", "Deliver secure, reliable cloud-based systems with practical security controls, access management, and monitoring. Focused on stability, compliance, and production resilience across modern application environments.", "AWS, Auth, Monitoring, Secure APIs, SSH, Network Security"],
 ];
 const faqs = ["What kind of services or projects can you develop?", "What is your availability and typical project timeline?", "What are your pricing models (hourly vs. project-based)?", "Do you work remotely or on-site?", "What technologies and tech stack do you prefer?", "What is your project process and workflow?", "How do you prefer to communicate during projects?", "Can you share examples of your portfolio or previous projects?", "What certifications and education do you have?", "What is your location and timezone?"];
+const PROFILE_IMAGE_KEY = "pratheek-profile-image";
+const PROFILE_IMAGE_EVENT = "pratheek-profile-image-change";
+const DEFAULT_PROFILE_IMAGE = "/profile-photo.svg";
+
+function getProfileImage() {
+  if (typeof window === "undefined") return DEFAULT_PROFILE_IMAGE;
+
+  try {
+    return window.localStorage.getItem(PROFILE_IMAGE_KEY) || DEFAULT_PROFILE_IMAGE;
+  } catch {
+    return DEFAULT_PROFILE_IMAGE;
+  }
+}
+
+function subscribeToProfileImage(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(PROFILE_IMAGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(PROFILE_IMAGE_EVENT, callback);
+  };
+}
 
 export function PortfolioShell() {
   const pathname = usePathname();
@@ -25,7 +47,8 @@ export function PortfolioShell() {
 }
 
 function Navbar({ pathname }: { pathname: string }) {
-  return <header className="reference-nav"><Link prefetch className="reference-logo" href="/">Portfolio<span>.</span></Link><nav>{nav.map(([label, href]) => <Link prefetch className={pathname === href ? "active" : ""} key={href} href={href}>{label}</Link>)}<span className="nav-globe"><Globe size={22} /></span><Link prefetch className="hire-button" href="/contact">Hire me!</Link></nav></header>;
+  const [open, setOpen] = useState(false);
+  return <header className="reference-nav"><Link prefetch className="reference-logo" href="/" onClick={() => setOpen(false)}>Portfolio<span>.</span></Link><nav className="desktop-nav">{nav.map(([label, href]) => <Link prefetch className={pathname === href ? "active" : ""} key={href} href={href}>{label}</Link>)}<span className="nav-globe"><Globe size={22} /></span><Link prefetch className="hire-button" href="/contact">Hire me!</Link></nav><button className="menu-toggle" type="button" aria-label={open ? "Close navigation menu" : "Open navigation menu"} aria-expanded={open} onClick={() => setOpen((current) => !current)}>{open ? "×" : "☰"}</button><AnimatePresence>{open && <motion.nav className="mobile-nav" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>{nav.map(([label, href]) => <Link prefetch className={pathname === href ? "active" : ""} key={href} href={href} onClick={() => setOpen(false)}>{label}</Link>)}</motion.nav>}</AnimatePresence></header>;
 }
 
 function Home() {
@@ -35,16 +58,16 @@ function Home() {
 
 
 function Portrait() {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const imageUrl = useSyncExternalStore(subscribeToProfileImage, getProfileImage, () => DEFAULT_PROFILE_IMAGE);
 
-  useEffect(() => {
-    const savedImage = window.localStorage.getItem("pratheek-profile-image");
-    setImageUrl(savedImage || "/profile-photo.svg");
-  }, []);
-
-  useEffect(() => () => {
-    if (imageUrl?.startsWith("blob:")) URL.revokeObjectURL(imageUrl);
-  }, [imageUrl]);
+  const updateProfileImage = (value: string | null) => {
+    try {
+      if (value) window.localStorage.setItem(PROFILE_IMAGE_KEY, value);
+      else window.localStorage.removeItem(PROFILE_IMAGE_KEY);
+      window.dispatchEvent(new Event(PROFILE_IMAGE_EVENT));
+    } catch {
+    }
+  };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -55,23 +78,16 @@ function Portrait() {
       const result = typeof reader.result === "string" ? reader.result : null;
       if (!result) return;
 
-      setImageUrl((currentUrl) => {
-        if (currentUrl?.startsWith("blob:")) URL.revokeObjectURL(currentUrl);
-        window.localStorage.setItem("pratheek-profile-image", result);
-        return result;
-      });
+      updateProfileImage(result);
     };
 
     reader.readAsDataURL(file);
   };
 
-  return <div className="reference-portrait"><div className="portrait-ring" />{imageUrl && <Image src={imageUrl} alt="Pratheek HN" width={520} height={650} unoptimized className="portrait-placeholder has-image" onError={() => {
-    window.localStorage.removeItem("pratheek-profile-image");
-    setImageUrl("/profile-photo.svg");
-  }} />}<input type="file" accept="image/*" onChange={handleImageUpload} aria-label="Upload profile photo" /><span className="portrait-note">Pratheek H N</span></div>;
+  return <div className="reference-portrait"><div className="portrait-ring" /><Image src={imageUrl} alt="Pratheek HN" width={520} height={650} priority unoptimized className="portrait-placeholder has-image" onError={() => updateProfileImage(null)} /><input type="file" accept="image/*" onChange={handleImageUpload} aria-label="Upload profile photo" /><span className="portrait-note">Pratheek H N</span></div>;
 }
-function Socials() { return <div className="socials"><a href="https://github.com/pratheekHN" target="_blank" rel="noreferrer" aria-label="GitHub"><Code2 size={18} /></a><a href="https://linkedin.com/in/pratheek-hn7" target="_blank" rel="noreferrer" aria-label="LinkedIn"><UserRound size={18} /></a><a href="https://youtube.com" target="_blank" rel="noreferrer" aria-label="YouTube"><MessageCircle size={18} /></a><a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram"><Globe size={18} /></a><a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook"><Phone size={18} /></a><a href="https://x.com" target="_blank" rel="noreferrer" aria-label="X"><X size={18} /></a></div>; }
-function Stats() { return <section className="reference-stats"><div><strong>02</strong><span>Years of<br />Experience</span></div><div><strong>04</strong><span>Projects<br />Completed</span></div><div><strong>15</strong><span>Technologies<br />Used</span></div><div><strong>∞</strong><span>Code<br />Growing</span></div></section>; }
+function Socials() { return <div className="socials"><a href="https://github.com/pratheekhn816-creator" target="_blank" rel="noreferrer" aria-label="GitHub"><Code2 size={18} /></a><a href="https://linkedin.com/in/pratheek-hn7" target="_blank" rel="noreferrer" aria-label="LinkedIn"><UserRound size={18} /></a><a href="https://youtube.com" target="_blank" rel="noreferrer" aria-label="YouTube"><MessageCircle size={18} /></a><a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram"><Globe size={18} /></a><a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook"><Phone size={18} /></a><a href="https://x.com" target="_blank" rel="noreferrer" aria-label="X"><X size={18} /></a></div>; }
+function Stats() { return <section className="reference-stats"><div><strong>02</strong><span>Years of<br />Experience</span></div><div><strong>04</strong><span>Projects<br />Completed</span></div><div><strong>15</strong><span>Technologies<br />Used</span></div><div><strong>∞</strong><span>Ideas<br />Growing</span></div></section>; }
 
 function Expertise() { return <PageFrame title="Expertise"><div className="expertise-grid">{expertise.map(([number, title, description, stack]) => <motion.article className="expertise-card" key={number} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}><div className="card-number">{number}</div><div className="round-arrow"><ArrowDown size={28} /></div><h2>{title}</h2><p>{description}</p><strong>{stack}</strong></motion.article>)}</div></PageFrame>; }
 function Experience() {
